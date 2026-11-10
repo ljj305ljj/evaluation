@@ -1,83 +1,59 @@
 import { request } from '@/axios'
+
+/**
+ * 开放接口（参评人测评链路），沿用原文件名 common.js
+ * 文档：EVA 福建理工大学考评系统 · 参评人开放接口文档 v1.0
+ */
 const common = {
-  login: (data) => {
+  // 换取令牌（PASSWORD 模式，入参由 utils/openAuth.buildTokenPayload 构建）
+  getToken: (data) => {
     return request({
-      url: '/api/User/login',
+      url: '/open/auth/token',
       method: 'post',
       data
     })
   },
-  // 退出登录
-  logout: (params) => {
+  // 注销令牌
+  deleteToken: () => {
     return request({
-      url: '/api/User/logout',
-      method: 'get',
-      params
+      url: '/open/auth/token',
+      method: 'delete'
     })
   },
-  // 获取用户信息
-  getInfo: (params) => {
+  // 我的测评任务列表
+  getVoteTasks: () => {
     return request({
-      url: '/api/User/getInfo',
-      method: 'get',
-      params
+      url: '/open/eva/vote/tasks',
+      method: 'get'
     })
   },
-  // 获取被考评教师列表
-  teacherList: (params) => {
+  // 我的测评进度
+  getVoteProgress: (taskId) => {
     return request({
-      url: '/api/eva/teacherList',
-      method: 'get',
-      params
+      url: `/open/eva/vote/${taskId}/progress`,
+      method: 'get'
     })
   },
-  // 获取考评卷列表
-  getEvaList: (params) => {
+  // 待测评对象列表
+  getVoteObjects: (taskId) => {
     return request({
-      url: '/api/eva/getList',
-      method: 'get',
-      params
+      url: `/open/eva/vote/${taskId}/objects`,
+      method: 'get'
     })
   },
-  // 获取考评卷详情模板
-  getDetailTemplate: (params) => {
+  // 测评详情（对象信息 + 述职报告 + 题目 + 已作答回显）
+  getVoteObjectDetail: (taskId, objectUserId) => {
     return request({
-      url: '/api/eva/getDetail',
-      method: 'get',
-      params
+      url: `/open/eva/vote/${taskId}/objects/${objectUserId}`,
+      method: 'get'
     })
   },
-  // 获取被考评对象列表
-  getEvaItemList: (params) => {
-    return request({
-      url: '/api/evaItem/getList',
-      method: 'get',
-      params
-    })
-  },
-  // 获取考评对象提交数据
-  getVoteInfo: (params) => {
-    return request({
-      url: '/api/evaItem/getVoteInfo',
-      method: 'get',
-      params
-    })
-  },
-  // 提交考评数据
+  // 提交测评答卷（submitToken 幂等；重复提交返回 400 + ALREADY_SUBMITTED）
   submitVote: (data) => {
     return request({
-      url: '/api/evaItem/submitVote',
+      url: '/open/eva/vote/submit',
       method: 'post',
       data
-    })
-  },
-
-  // 获取学院未完成考评人员列表
-  getProgressData: (params) => {
-    return request({
-      url: '/api/eva/getProgressData',
-      method: 'get',
-      params
     })
   }
 }

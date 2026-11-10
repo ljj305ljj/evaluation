@@ -4,8 +4,8 @@ import {
   removeToken,
   getToken,
   clearStorage,
-  // getUserInfo,
-  // setUserInfo,
+  getUserInfo,
+  setUserInfo,
   setLoginForm,
   getLoginForm,
   setHomeInfo,
@@ -13,21 +13,23 @@ import {
 } from '@/cache/user'
 import router from '@/router'
 import { Toast } from 'vant'
+import { buildTokenPayload } from '@/utils/openAuth'
+
 const state = {
-  // userInfo: getUserInfo(), // 用户登录返回信息
   token: getToken(),
-  loginForm: getLoginForm(), // 登录帐号和密码
-  homeInfo: getHomeInfo() // 获取考核表信息
+  userInfo: getUserInfo(), // 换取令牌接口返回的用户信息（nickName/deptName 等）
+  loginForm: getLoginForm(),
+  homeInfo: getHomeInfo()
 }
 const mutations = {
   SET_TOKEN: (state, token) => {
     state.token = token
     setToken(token)
   },
-  // SET_USERINFO: (state, userInfo) => {
-  //   state.userInfo = userInfo
-  //   setUserInfo(userInfo)
-  // },
+  SET_USERINFO: (state, userInfo) => {
+    state.userInfo = userInfo
+    setUserInfo(userInfo)
+  },
   SET_LOGINFORM: (state, loginForm) => {
     state.loginForm = loginForm
     setLoginForm(loginForm)
@@ -38,6 +40,7 @@ const mutations = {
   }
 }
 const actions = {
+  // PASSWORD 模式：工号 + 口令（RSA 加密）+ 签名，换取开放接口 JWT
   login({ commit }, loginForm) {
     return new Promise((resolve, reject) => {
       Toast.loading({
@@ -45,26 +48,35 @@ const actions = {
         forbidClick: true,
         duration: 0
       })
-      api.common.login(loginForm).then(res => {
+      api.common.getToken(buildTokenPayload(loginForm)).then(res => {
         Toast.clear()
-        if (res.code === 1) {
-          res.data && commit('SET_TOKEN', res.data.token)
-          // commit('SET_USERINFO', res.user)
+        if (res && res.token) {
+          commit('SET_TOKEN', res.token)
+          commit('SET_USERINFO', {
+            userId: res.userId,
+            username: res.username,
+            nickName: res.nickName,
+            deptName: res.deptName
+          })
           resolve(res)
         } else {
-          Toast(res.msg)
-          reject(res.msg)
+          Toast('登录失败，请稍后重试')
+          reject(new Error('登录响应缺少 token'))
         }
       }).catch(error => {
         Toast.clear()
         reject(error)
-        removeToken()
       })
     })
   },
-  logout({ commit }) {
+  // callApi=false：令牌已失效等场景，仅清本地状态，不再调用注销接口
+  logout({ commit }, { callApi = true } = {}) {
+    if (callApi && getToken()) {
+      api.common.deleteToken().catch(() => {})
+    }
     commit('SET_TOKEN', '')
     removeToken()
+    clearStorage()
     router.replace('/login')
   }
 }

@@ -7,7 +7,7 @@ const TerserPlugin = require('terser-webpack-plugin')
 module.exports = {
   publicPath: './', // 基本路径
   indexPath: 'index.html', // 相对于打包路径index.html的路径
-  outputDir: 'dist', // 输出文件目录
+  outputDir: 'mobile', // 输出文件目录
   lintOnSave: false, // eslint-loader 是否在保存的时候检查
   assetsDir: 'static', // 放置生成的静态资源 (js、css、img、fonts) 的 (相对于 outputDir 的) 目录。
   // 是否使用包含运行时编译器的 Vue 构建版本。设置为 true 后你就可以在 Vue 组件中使用 template 选项了，但是这会让你的应用额外增加 10kb 左右。
@@ -24,7 +24,7 @@ module.exports = {
           algorithm: 'gzip', // 采用的压缩算法
           test: productionGzipExtensions, // 哪些文件需要压缩
           threshold: 10240, // 设置文件多大开始压缩
-          minRatio: 0.8// 至少压缩的比例
+          minRatio: 0.8 // 至少压缩的比例
         })
       )
       plugins.push(
@@ -47,12 +47,10 @@ module.exports = {
     config.resolve.symlinks(true)
     // 修改文件引入自定义路径
     config.resolve.alias.set('@', resolve('src'))
-    config
-      .plugin('html')
-      .tap(args => {
-        args[0].title = '福建理工大学中层干部学年度考评系统'
-        return args
-      })
+    config.plugin('html').tap((args) => {
+      args[0].title = '福建理工大学中层干部学年度考评系统'
+      return args
+    })
   },
   css: {
     extract: isProduction,

@@ -22,7 +22,8 @@ const routes = [
     name: 'home',
     component: () => import('@/views/home'),
     meta: {
-      title: '首页', keepAlive: true
+      title: '首页',
+      keepAlive: true
     }
   },
   {
@@ -30,7 +31,8 @@ const routes = [
     name: 'evaluation',
     component: () => import('@/views/evaluation'),
     meta: {
-      title: '考评', keepAlive: true
+      title: '考评',
+      keepAlive: true
     }
   }
 ]
@@ -39,7 +41,7 @@ const router = new VueRouter({
   routes
 })
 // , '/home'
-const whiteList = ['/login','/home'] // 白名单，在白名单当中的路由可以免登录，直接进入。
+const whiteList = ['/login'] // 白名单，在白名单当中的路由可以免登录，直接进入。
 // 全局前置守卫,当有路由进行跳转时就会进入这个守卫，
 // 这个守卫方法接收三个参数：
 // to: Route: 即将要进入的目标 路由对象

@@ -28,11 +28,7 @@ export default {
           confirmButtonColor: '#4095E5'
         })
         .then(() => {
-          this.$api.common['logout']().then(res => {
-            if (res.code === 1) {
-              this.$store.dispatch('user/logout')
-            }
-          })
+          this.$store.dispatch('user/logout')
         })
     }
   }

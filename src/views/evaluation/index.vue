@@ -7,62 +7,36 @@
         <div class="people">应考评<span class="num1">{{ homeInfo.total_count }}</span>人，已考评<span class="num2">{{ homeInfo.submit_count }}</span>人</div>
         <div ref="wrapper" class="wrapper">
           <ul ref="content" class="content eval-tabs flex-x-start flex-nowrap ">
-            <li v-for="(evaItem,t) in evaItemList" :key="evaItem.id" class="flex-col-center" @click="">
+            <li v-for="(evaItem,t) in evaItemList" :key="evaItem.id" class="flex-col-center" @click="selectItem(evaItem, t)">
               <div class="tab-user">
                 <img src="@/assets/user-icon.png" :class="evaItem.actived ? 'actived': ''">
                 <van-icon v-if="evaItem.is_submit" name="checked" color="#14C25D" />
+                <van-icon v-else-if="evaItem.locked" name="lock" color="#C0C4CC" />
               </div>
               <span :class="evaItem.actived ? 'actived': ''">{{ evaItem.name }}</span>
             </li>
-            <!-- <li class="flex-col-center">
-          <div class="tab-user">
-            <img src="@/assets/user-icon.png" class="">
-            <van-icon name="checked" color="#14C25D" />
-          </div>
-          <span>张老师</span>
-        </li>
-        <li class="flex-col-center">
-          <img src="@/assets/user-icon.png" class="">
-          <span>张老师</span>
-        </li>
-        <li class="flex-col-center">
-          <img src="@/assets/user-icon.png" class="">
-          <span>张老师</span>
-        </li>
-        <li class="flex-col-center">
-          <img src="@/assets/user-icon.png" class="">
-          <span>张老师</span>
-        </li>
-        <li class="flex-col-center">
-          <img src="@/assets/user-icon.png" class="">
-          <span>张老师</span>
-        </li>
-        <li class="flex-col-center">
-          <img src="@/assets/user-icon.png" class="">
-          <span>张老师</span>
-        </li> -->
           </ul>
         </div>
       </div>
       <div ref="tabView" class="eval-tab-view">
-        <!-- <template v-for="(evaItem,t) in evaItemList"> -->
         <div v-if="activedEvaItem.actived" class="content-box flex-y-center flex-x-between">
           <div class="infos">
             <div class="name">考评人员</div>
             <div class="username">{{ activedEvaItem.name }}</div>
             <div class="name">部门/职务</div>
             <div class="dept">{{ activedEvaItem.descript }}</div>
-            <div class="report" @click="showReport=true">述职报告>></div>
-            <van-image-preview v-model="showReport" :images="activedEvaItem.extra_path_arr" @change="onChange" />
+            <div v-if="activedEvaItem.reportUrl" class="report" @click="showReport=true">述职报告>></div>
+            <van-image-preview v-model="showReport" :images="[activedEvaItem.reportUrl]" @change="onChange" />
           </div>
           <div class="info-photo"><img src="@/assets/user-icon.png"></div>
         </div>
+        <div v-if="submitted" class="submitted-tip">该考评对象已完成测评，以下内容为已提交答卷，仅供查看</div>
         <template v-for="template in detailHaveAnswer">
-          <div v-if="isShowTemplate(template)" :key="'temp'+template.id" class="content-box flex-col">
+          <div :key="'temp'+template.name" class="content-box flex-col">
             <div class="form-title">{{ template.name }}</div>
             <ul class="eval-form">
               <li v-for="que in template.question" :key="'que'+que.id">
-                <div>{{ que.content }}</div>
+                <div>{{ que.content }}<span v-if="que.required" class="required-mark">*</span></div>
                 <van-radio-group v-if="que.type === 1 || que.type === 2" v-model="que.answer" class="flex-x-between" direction="horizontal" :disabled="!isClick">
                   <van-radio
                     v-for="opt in que.option"
@@ -77,77 +51,39 @@
                     autosize
                     type="textarea"
                     placeholder="请输入评议意见"
+                    :disabled="!isClick"
                   />
                 </div>
               </li>
             </ul>
           </div>
         </template>
-        <!-- <div class="content-box flex-col">
-          <div class="form-title">党委领导班子成员述责述廉评议表</div>
-          <ul class="eval-form">
-            <li>
-              <div>总体评价</div>
-              <van-radio-group v-model="radio" class="flex-x-between" direction="horizontal">
-                <van-radio name="1">好</van-radio>
-                <van-radio name="2">较好</van-radio>
-                <van-radio name="3">一般</van-radio>
-                <van-radio name="4">差</van-radio>
-              </van-radio-group>
-            </li>
-            <li>
-              <div>总体评价</div>
-              <van-radio-group v-model="radio" class="flex-x-between" direction="horizontal">
-                <van-radio name="1">好</van-radio>
-                <van-radio name="2">较好</van-radio>
-                <van-radio name="3">一般</van-radio>
-                <van-radio name="4">差</van-radio>
-              </van-radio-group>
-            </li>
-            <li>
-              <div>总体评价</div>
-              <van-radio-group v-model="radio" class="flex-x-between" direction="horizontal">
-                <van-radio name="1">好</van-radio>
-                <van-radio name="2">较好</van-radio>
-                <van-radio name="3">一般</van-radio>
-                <van-radio name="4">差</van-radio>
-              </van-radio-group>
-            </li>
-          </ul>
-        </div> -->
-        <button class="submit-button" :class="isClick ? '' : 'opacity'" @click="submitAndNext()">{{ submitBtnName }}</button>
+        <button v-if="!submitted" class="submit-button" :class="isClick && homeInfo.submittable ? '' : 'opacity'" @click="submitAndNext()">{{ submitBtnName }}</button>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import BScroll from 'better-scroll'
 import Header from '@/components/header'
+import { genRandomHex } from '@/utils/openAuth'
+
 export default {
   name: 'Evaluation',
   components: {
     Header
   },
-  filters: {
-    // dataFormat(dataItem, fieldItem) {
-    //   return fieldItem.count
-    //     ? dataItem[fieldItem.id].substr(0, fieldItem.length)
-    //     : dataItem[fieldItem.id]
-    // },
-  },
   data() {
     return {
-      radio: {},
-      // 图片预览
+      // 图片预览（与旧版一致：点击述职报告在本页预览）
       showReport: false,
       index: 0,
       evaItemList: [], // 被考评对象列表
       activedEvaItem: {}, // 被选中的考评对象
-      deTemplates: [], // 考评卷详情模板
-      detailHaveAnswer: [], // 考评卷详情,带答案
-      isClick: true
-
+      detailHaveAnswer: [], // 测评详情，带答案（含述责述廉评议表分组）
+      isClick: true, // 是否可作答/提交（已提交对象为只读）
+      submitted: false, // 当前对象是否已提交（服务端回显）
+      submitToken: '' // 幂等令牌：进入测评页生成一次，重试复用
     }
   },
   computed: {
@@ -163,10 +99,11 @@ export default {
       return activedEvaItemIndex
     },
     homeInfo() {
-      return this.$store.getters.homeInfo
+      return this.$store.getters.homeInfo || {}
     }
   },
   async created() {
+    this.submitToken = genRandomHex(32)
     try {
       this.$toast.loading({
         message: '加载中...',
@@ -175,170 +112,218 @@ export default {
         duration: 0
       })
       await this.getEvaItemList()
-      // this.initScroll()
-      await this.getDetailTemplate()
+      await this.getDetailTemplate() // 加载首个被考评对象的题目详情
+      await this.getTaskInfo()
       this.$toast.clear()
     } catch (e) {
       this.$toast.clear()
     }
   },
-  mounted() {
-  },
   methods: {
-    initScroll() {
-      const evaItems = this.$refs.content.getElementsByTagName('li')
-      // 设置一个起始宽度
-      let initWidth = 0
-      // 遍历标签
-      for (let i = 0; i < evaItems.length; i++) {
-        const item = evaItems[i]
-        // 将每一个标签宽度相加
-        initWidth += item.clientWidth
-        console.log(item.clientWidth)
-      }
-      // var width = (this.evaItemList.length + 1) * 78.6
-      console.log(initWidth)
-      this.$refs.content.style.width = initWidth + 'px'
-
-      // this.$nextTick(() => {
-      //   if (!this.scroll) {
-      //     this.scroll = new BScroll(this.$refs.wrapper, { // 实例化BScroll接受两个参数，第一个为父盒子的dom节点
-      //       startX: 0, // / 配置的详细信息请参考better-scroll的官方文档，这里不再赘述
-      //       click: true,
-      //       scrollX: true,
-      //       scrollY: false, // 忽略竖直方向的滚动
-      //       eventPassthrough: 'vertical',
-      //       useTransition: false // 防止快速滑动触发的异常回弹
-      //       // stepX: window.innerWidth // 横向切换距离为窗口宽度
-      //     })
-      //     console.log(this.scroll)
-      //   } else {
-      //     this.scroll.refresh() // 如果dom结构发生改变调用该方法重新计算来确保滚动效果的正常
-      //   }
-      // })
-    },
     onChange(index) {
       this.index = index
     },
-    // select(index) {
-    //   this.evaItemList.forEach((item, i) => {
-    //     item.actived = false
-    //     if (i === index) {
-    //       item.actived = true
-    //     }
-    //   })
-    //   const content = document.querySelector(`.content`)
-    //   if (index > 2 && index < this.evaItemList.length - 2) {
-    //     const scrollOne = content.clientWidth * 0.2
-    //     content.scrollTo({ left: scrollOne * (index - 2), behavior: 'smooth' })
-    //   } else if (index <= 2) {
-    //     content.scrollTo({ left: 0, behavior: 'smooth' })
-    //   } else if (index >= this.evaItemList.length - 2) {
-    //     content.scrollTo({ right: 0, behavior: 'smooth' })
-    //   }
-    // },
-    getEvaItemList() { // 获取被考评对象列表
-      return this.$api.common['getEvaItemList']({ id: this.id }).then(res => {
-        if (res.code === 1) {
-          this.evaItemList = res.data.map((item, i) => {
-            return {
-              ...item,
-              'extra_path_arr': [`${process.env.VUE_APP_BASE_API}${item.extra_path}`],
-              actived: false // 是否选中
-            }
-          })
-          // 选中第一个未提交的被考评人
-          const unSubmit = this.evaItemList.filter(item => !item.is_submit)
-          unSubmit[0].actived = true
-          this.activedEvaItem = unSubmit[0]
-          this.$nextTick(() => {
-            const curEvaItem = this.$refs.content.getElementsByTagName('li')[this.activedEvaItemIndex]
-            const curEvaItemRect = curEvaItem.getBoundingClientRect()
-            if (curEvaItemRect.left + curEvaItem.clientWidth / 2 > this.$el.clientWidth / 2) {
-              document.querySelector(`.content`).scrollTo({ left: (curEvaItemRect.left + curEvaItem.clientWidth / 2 - this.$el.clientWidth / 2), behavior: 'smooth' })
-            }
-            // const content = document.querySelector(`.content`)
-            // const scrollOne = content.clientWidth * 0.2
-            // if (this.activedEvaItemIndex > 2 && this.activedEvaItemIndex < this.evaItemList.length - 2) {
-            //   document.querySelector(`.content`).scrollTo({ left: scrollOne * (this.activedEvaItemIndex - 2), behavior: 'smooth' })
-            // }
-          })
-          // console.log(this.evaItemList)
-        }
-      })
-    },
-    getDetailTemplate() { // 获取考评卷详情模板
-      return this.$api.common['getDetailTemplate']({ id: this.id }).then(res => {
-        if (res.code === 1) {
-          this.deTemplates = res.data
-          this.detailHaveAnswer = JSON.parse(JSON.stringify(res.data))
-        }
-      })
-    },
-    // 是否显示考评卷详情模板
-    isShowTemplate(template) {
-      if ((template.is_party === 1 && this.activedEvaItem.is_party === 1) || template.is_party === 0) {
-        return true
-      } else {
-        return false
+    // 切换被考评对象（含点击标签页）
+    async selectItem(item, index) {
+      if (this.activedEvaItem.id === item.id) return
+      if (item.locked) {
+        return this.$toast('请按顺序完成前面的测评')
       }
+      this.evaItemList.forEach((it, i) => {
+        it.actived = i === index
+        if (i === index) this.activedEvaItem = it
+      })
+      try {
+        this.$toast.loading({ message: '加载中...', forbidClick: true, duration: 0 })
+        await this.getDetailTemplate()
+        this.$toast.clear()
+      } catch (e) {
+        this.$toast.clear()
+      }
+    },
+    getEvaItemList() { // 获取被考评对象列表
+      return this.$api.common['getVoteObjects'](this.id).then(list => {
+        // 已作废（status=2）对象被移出任务，直接隐藏、不阻断顺序
+        this.evaItemList = (list || []).filter(item => item.status !== 2).map(item => {
+          return {
+            id: item.objectUserId, // 考评对象ID，详情与提交接口要用
+            objectNo: item.objectNo,
+            name: item.objectName,
+            descript: item.jobDescription, // 部门/职务显示 jobDescription
+            is_submit: item.status === 1 ? 1 : 0, // 0 待测评 / 1 已提交
+            partyEval: item.partyEval, // 是否附带述责述廉评议表
+            reportUrl: item.reportUrl || '', // 接口已返回完整地址（含IP），直接使用
+            locked: false, // 顺序锁：未提交中只有第一个可作答
+            actived: false // 是否选中
+          }
+        })
+        // 顺序锁：按列表顺序，未提交中只有第一个解锁，其后的加锁（点击提示，不置灰）
+        let firstUnsubmitFound = false
+        this.evaItemList.forEach(item => {
+          if (item.is_submit || !firstUnsubmitFound) {
+            if (!item.is_submit) firstUnsubmitFound = true
+            item.locked = false
+          } else {
+            item.locked = true
+          }
+        })
+        // 选中对象：当前对象仍在列表（如提交后变已提交）则把选中态绑回新数组，否则选中第一个未提交的
+        const current = this.evaItemList.find(item => item.id === this.activedEvaItem.id)
+        if (current) {
+          current.actived = true
+          this.activedEvaItem = current
+        } else {
+          const unSubmit = this.evaItemList.filter(item => !item.is_submit)
+          const first = unSubmit.length ? unSubmit[0] : this.evaItemList[0]
+          if (first) {
+            first.actived = true
+            this.activedEvaItem = first
+          }
+        }
+        this.$nextTick(() => {
+          const curEvaItem = this.$refs.content.getElementsByTagName('li')[this.activedEvaItemIndex]
+          if (!curEvaItem) return
+          const curEvaItemRect = curEvaItem.getBoundingClientRect()
+          if (curEvaItemRect.left + curEvaItem.clientWidth / 2 > this.$el.clientWidth / 2) {
+            document.querySelector(`.content`).scrollTo({ left: (curEvaItemRect.left + curEvaItem.clientWidth / 2 - this.$el.clientWidth / 2), behavior: 'smooth' })
+          }
+        })
+      })
+    },
+    // 获取当前任务信息，写入 homeInfo 供页面头部展示
+    getTaskInfo() {
+      return this.$api.common['getVoteTasks']().then(async tasks => {
+        const task = (tasks || []).find(item => item.taskId === Number(this.id)) || {}
+        let progress = {}
+        try {
+          progress = await this.$api.common['getVoteProgress'](this.id) || {}
+        } catch (e) {
+          progress = {}
+        }
+        this.$store.commit('user/SET_HOMEINFO', {
+          id: Number(this.id),
+          name: task.taskName || '',
+          total_count: progress.totalCount || 0,
+          submit_count: progress.finishedCount || 0,
+          submittable: task.submittable !== false
+        })
+      })
+    },
+    // 测评详情：题目 + 已作答回显；党员评议表（partyQuestions）与常规题目分组展示
+    getDetailTemplate() {
+      this.submitted = false
+      this.detailHaveAnswer = []
+      if (!this.activedEvaItem.id) return Promise.resolve()
+      return this.$api.common['getVoteObjectDetail'](this.id, this.activedEvaItem.id).then(data => {
+        const normalize = (questions = []) => questions.map(que => {
+          const key = String(que.questionId)
+          return {
+            id: que.questionId,
+            content: que.title,
+            type: que.questionType, // 1 单选 / 3 文本
+            required: !!que.required,
+            option: (que.options || []).map(opt => ({ id: opt.optionId, content: opt.content })),
+            // 已作答回显（键为字符串的题目ID）
+            answer: que.questionType === 3
+              ? (data.textAnswers[key] || '')
+              : ((data.selectedOptions[key] || [])[0] || '')
+          }
+        })
+        const sections = [{
+          name: data.schemeName,
+          is_party: false,
+          question: normalize(data.questions)
+        }]
+        if (data.partyEval && data.partyQuestions && data.partyQuestions.length) {
+          sections.push({
+            name: data.partySchemeName || '述责述廉评议表',
+            is_party: true,
+            question: normalize(data.partyQuestions)
+          })
+        }
+        this.submitted = !!data.submitted
+        this.isClick = !data.submitted // 已提交则只读展示
+        this.detailHaveAnswer = sections
+        // 每个对象独立幂等令牌：加载新对象详情时重新生成，
+        // 同一对象提交超时重试时复用同一值（服务端以 submitToken 为幂等键）
+        this.submitToken = genRandomHex(32)
+      })
     },
     // 提交考评数据
     submitVote() {
       const submitData = {
-        evaId: this.id,
-        itemsId: this.activedEvaItem.id,
-        data: []
+        taskId: Number(this.id),
+        objectUserId: this.activedEvaItem.id,
+        submitToken: this.submitToken, // 幂等令牌，重试复用同一值
+        items: []
       }
       let isSave = true
       this.detailHaveAnswer.forEach(template => {
-        if (this.isShowTemplate(template)) {
-          template.question.forEach(que => {
-            if (que.type === 1 || que.type === 2) { // 选择题
-              if (!que.answer && isSave) {
+        template.question.forEach(que => {
+          if (que.type === 1 || que.type === 2) { // 单选
+            if (!que.answer) {
+              if (isSave) {
                 this.$toast('数据填写不完整！')
                 isSave = false
-                return
-              } else {
-                submitData.data.push({
-                  questionId: que.id,
-                  optionId: que.answer
-                })
               }
-            } else if (que.type === 3) { // 文本框
-              submitData.data.push({
-                questionId: que.id,
-                optionContent: que.answer || ''
-              })
+              return
             }
-          })
-        }
-      })
-      if (isSave) {
-        this.$toast.loading({
-          message: '提交中...',
-          forbidClick: true,
-          // closeOnClick: true,
-          duration: 0
-        })
-        return this.$api.common['submitVote'](submitData).then(res => {
-          this.$toast.clear()
-          if (res.code === 1) {
-            this.$toast.success('考评成功')
-            this.activedEvaItem.is_submit = 1
-            this.$refs.evaluation.scrollTo({ top: 0, behavior: 'smooth' })
-            this.getEvaList()
-            return Promise.resolve()
-          } else {
-            return Promise.reject()
+            submitData.items.push({
+              questionId: que.id,
+              optionIds: [que.answer]
+            })
+          } else if (que.type === 3 && que.answer) { // 文本（选填，有内容才提交）
+            submitData.items.push({
+              questionId: que.id,
+              textAnswer: que.answer
+            })
           }
         })
-      } else {
+      })
+      if (!isSave) {
         return Promise.reject()
       }
+      this.$toast.loading({
+        message: '提交中...',
+        forbidClick: true,
+        // closeOnClick: true,
+        duration: 0
+      })
+      return this.$api.common['submitVote'](submitData).then(progress => {
+        this.$toast.clear()
+        this.handleSubmitSuccess(progress)
+        return Promise.resolve()
+      }).catch(error => {
+        this.$toast.clear()
+        // 重复提交视为已成功（网络超时重试等场景）
+        if (error && error.code === 'ALREADY_SUBMITTED') {
+          this.$toast('该考评对象已测评')
+          this.handleSubmitSuccess()
+          return Promise.resolve()
+        }
+        return Promise.reject(error)
+      })
+    },
+    // 提交成功后的统一处理：更新状态、刷新进度与对象列表
+    handleSubmitSuccess(progress) {
+      this.$toast.success('考评成功')
+      this.activedEvaItem.is_submit = 1
+      this.$refs.evaluation.scrollTo({ top: 0, behavior: 'smooth' })
+      // 用接口返回的最新进度刷新页面头部数字
+      if (progress && progress.totalCount != null) {
+        const homeInfo = { ...this.homeInfo }
+        homeInfo.total_count = progress.totalCount
+        homeInfo.submit_count = progress.finishedCount
+        this.$store.commit('user/SET_HOMEINFO', homeInfo)
+      }
+      // 静默刷新对象列表状态
+      this.getEvaItemList().catch(() => {})
     },
     // 保存提交并跳到下一个被考评人员
     async submitAndNext() {
+      if (!this.homeInfo.submittable) {
+        return this.$toast('当前不允许提交')
+      }
       // this.isClick = false
       if (this.isClick) {
         this.isClick = false
@@ -347,7 +332,6 @@ export default {
       }
       try {
         await this.submitVote()
-        // console.log(33333)
         const activedEvaItemIndex = this.evaItemList.findIndex(item => item.actived)
         if (activedEvaItemIndex === this.evaItemList.length - 1) { // 最后一个被考评人员
           setTimeout(() => {
@@ -355,48 +339,24 @@ export default {
           }, 1000)
           return
         }
-        // setTimeout(() => {
-        // 清空填的答案
-        this.detailHaveAnswer.forEach(template => {
-          template.question.forEach(que => {
-            que.answer = ''
-          })
-        })
-
-        let index
-        this.evaItemList.forEach((item, i) => {
-          if (item.actived) {
-            index = i
-            item.actived = false
-          }
-        })
-
-        if (index < this.evaItemList.length - 1) {
-          index++
+        // 切换到下一个未提交的被考评人并拉取其详情
+        const next = this.evaItemList.filter(item => !item.is_submit)[0]
+        if (next) {
+          const nextIndex = this.evaItemList.findIndex(item => item.id === next.id)
           this.evaItemList.forEach((item, i) => {
-            if (i === index) {
-              item.actived = true
-              this.activedEvaItem = item
-            }
+            item.actived = i === nextIndex
           })
-          const curEvaItem = this.$refs.content.getElementsByTagName('li')[index]
+          this.activedEvaItem = next
+          const curEvaItem = this.$refs.content.getElementsByTagName('li')[nextIndex]
           const curEvaItemRect = curEvaItem.getBoundingClientRect()
           if (curEvaItemRect.left + curEvaItem.clientWidth / 2 > this.$el.clientWidth / 2) {
             document.querySelector(`.content`).scrollTo({ left: (curEvaItem.offsetLeft - this.$el.clientWidth / 2 + curEvaItem.clientWidth / 2), behavior: 'smooth' })
           }
+          await this.getDetailTemplate()
         }
       } catch (e) { this.isClick = true }
       this.isClick = true
       // }, 1000)
-    },
-    // 获取考评卷列表
-    getEvaList() {
-      return this.$api.common['getEvaList']().then(res => {
-        // console.log(res)
-        if (res.code === 1) {
-          this.$store.commit('user/SET_HOMEINFO', res.data[0])
-        }
-      })
     }
   }
 
@@ -465,13 +425,6 @@ export default {
                     .tab-user {
                         position: relative;
                     }
-                    // .actived {
-                    //     width: 45px;
-                    //     height: 45px;
-                    //     border-radius: 50%;
-                    //     border: 2px solid #f80404;
-                    //     text-align: center;
-                    // }
                     i {
                         position: absolute;
                         right: -4px;
@@ -496,16 +449,20 @@ export default {
                     }
                 }
             }
-            // .wrapper{
-            //   width: 100%;
-            //   overflow-x: hidden;
-            // }
             .content {
                 // width: 200%;
                 // overflow-x: scroll;
             }
             .content-box {
                 margin: 20px;
+            }
+            .submitted-tip {
+                margin: 0 20px;
+                padding: 10px;
+                background: #ecf5ff;
+                color: #4095E5;
+                font-size: 13px;
+                border-radius: 5px;
             }
             .infos {
                 line-height: 30px;
@@ -530,6 +487,10 @@ export default {
                     width: 100px;
                 }
             }
+            .required-mark {
+                color: #f80404;
+                margin-left: 2px;
+            }
         }
         .form-title {
             font-size: 16px;
@@ -552,6 +513,7 @@ export default {
             font-size: 18px;
             margin: 0 5%;
             font-weight: bold;
+            border: none;
         }
         .submit-button.opacity {
             opacity: 0.6;
