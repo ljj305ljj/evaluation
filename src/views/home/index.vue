@@ -16,8 +16,7 @@
         class="begin-btn"
         :class="task.finished ? 'finish' : ''"
         :disabled="!task.canEnter"
-        @click="task.canEnter ? openEvaluation(task) : ''"
-      >
+        @click="task.canEnter ? openEvaluation(task) : ''">
         <van-icon v-if="task.finished" name="checked" color="#ffffff" />
         {{ buttonName(task) }}
       </button>
@@ -26,6 +25,25 @@
     <div class="home-box notice">
       <p class="notice-title">考评须知：</p>
       <p class="notice-content" v-html="noticeContent" />
+    </div>
+    <!-- 本部门测评进度（仅部门管理员，样式沿用旧版"未完成考评人员"卡片） -->
+    <div v-for="task in deptTaskList" :key="'dept-' + task.taskId" class="home-box unfinish">
+      <div class="unfinish-title">【{{ task.dept.deptName }}】测评进度</div>
+      <!-- <div v-if="task.dept.deptName" class="unfinish-sub">{{ task.dept.deptName }}</div> -->
+      <div class="unfinish-sub">
+        共 {{ task.dept.raterCount }} 人， 已完成 {{ task.dept.finishedRaterCount }}， 进行中
+        {{ task.dept.inProgressRaterCount }}， 未开始 {{ task.dept.notStartedRaterCount }}（完成率
+        {{ task.dept.finishedPercent }}%）
+      </div>
+      <ul class="unfinish-content">
+        <li v-for="rater in task.dept.raters" :key="rater.userId" class="rater-row">
+          <span class="rater-no">{{ rater.username }}</span>
+          <span class="rater-name">{{ rater.nickName }}</span>
+          <span class="rater-status" :class="raterClass(rater.evalStatus)">
+            {{ rater.evalStatusText }}
+          </span>
+        </li>
+      </ul>
     </div>
     <div v-if="!taskList.length" class="home-box notice">
       <p class="notice-content">暂无测评任务</p>
@@ -54,6 +72,15 @@ export default {
     }
   },
   computed: {
+    isDeptAdmin() {
+      // 换令牌响应 deptAdmin=true 才是部门管理员（false 非管理员 / null 未建档），非管理员不展示入口
+      const userInfo = this.$store.state.user.userInfo || {}
+      return userInfo.deptAdmin === true
+    },
+    // 有部门进度数据的任务（按接口约定始终排除调用者本人）
+    deptTaskList() {
+      return this.taskList.filter((task) => task.dept)
+    },
     noticeContent() {
       // 与旧版一致：span 转 p 使每条须知独立成行
       return EVALUATION_NOTICE.replace(/span/g, 'p')
@@ -125,10 +152,12 @@ export default {
         submittable: task.submittable,
         canEnter: task.submittable !== false, // submittable=false 时置灰（文档约定）
         finished: false, // 个人进度是否全部完成（evalStatus===2）
+        dept: null, // 本部门参评人进度（仅部门管理员拉取）
         progress: { totalCount: 0, finishedCount: 0, evalStatus: 0, evalStatusText: '', percent: 0 }
       }))
-      await Promise.all(
-        list.map(async task => {
+      await Promise.all([
+        // 个人进度
+        ...list.map(async (task) => {
           try {
             const progress = await this.$api.common['getVoteProgress'](task.taskId)
             task.progress = {
@@ -142,9 +171,23 @@ export default {
           } catch (e) {
             // 非本任务参评人等情况，保持默认全 0
           }
-        })
-      )
+        }),
+        // 部门进度（仅部门管理员；始终排除本人）
+        ...(this.isDeptAdmin ? list.map((task) => this.loadDeptRaters(task)) : [])
+      ])
       this.taskList = list
+    },
+    // 拉取单个任务的本部门参评人进度（非管理员 DEPT_ADMIN_REQUIRED 等场景静默忽略）
+    loadDeptRaters(task) {
+      return this.$api.common['getDeptRaters'](task.taskId)
+        .then((dept) => {
+          task.dept = dept
+        })
+        .catch(() => {})
+    },
+    // 部门进度状态样式：0 未开始 / 1 进行中 / 2 已完成
+    raterClass(evalStatus) {
+      return { done: evalStatus === 2, doing: evalStatus === 1 }
     },
     // 供考评页提交成功后刷新进度
     refreshTaskProgress(taskId) {
@@ -240,6 +283,51 @@ export default {
     .notice-content {
       font-size: 12px;
       line-height: 20px;
+    }
+  }
+
+  // 本部门测评进度（样式沿用旧版"未完成考评人员"卡片）
+  .unfinish {
+    padding: 20px;
+    border: 1px solid #e6e4e2;
+    border-radius: 10px;
+    max-height: 420px;
+    overflow-y: auto;
+    .unfinish-title {
+      font-size: 15px;
+      font-weight: bold;
+    }
+    .unfinish-sub {
+      font-size: 12px;
+      color: #909399;
+      margin-top: 6px;
+    }
+    .unfinish-content {
+      margin-top: 10px;
+      li {
+        font-size: 14px;
+        line-height: 40px;
+        border-bottom: 1px solid #efefef;
+        &.rater-row {
+          display: flex;
+          .rater-no {
+            width: 100px;
+            color: #6b7280;
+          }
+          .rater-name {
+            flex: 1;
+          }
+          .rater-status {
+            color: #909399;
+            &.doing {
+              color: #4095e5;
+            }
+            &.done {
+              color: #14c25d;
+            }
+          }
+        }
+      }
     }
   }
 }

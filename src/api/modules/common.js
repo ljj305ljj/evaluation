@@ -55,6 +55,13 @@ const common = {
       method: 'post',
       data
     })
+  },
+  // 本部门参评人测评进度（仅部门管理员可用，非管理员返回 400 + DEPT_ADMIN_REQUIRED；始终排除本人）
+  getDeptRaters: (taskId) => {
+    return request({
+      url: `/open/eva/vote/${taskId}/dept-raters`,
+      method: 'get'
+    })
   }
 }
 
