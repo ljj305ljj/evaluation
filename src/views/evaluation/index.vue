@@ -5,6 +5,8 @@
       <div ref="evalTop" class="eval-top">
         <div class="title">{{ homeInfo.name }}</div>
         <div class="people">应考评<span class="num1">{{ homeInfo.total_count }}</span>人，已考评<span class="num2">{{ homeInfo.submit_count }}</span>人，已考评优秀<span class="num3">{{ homeInfo.excellent_count }}</span>人</div>
+        <!-- 测评规则提醒：仅"优秀"名额受限的角色（教职工）展示 -->
+        <div v-if="isTeacherLimited" class="excellent-rule">“优秀”等次人数不得超过总测试人数2/3，当前剩余可评优秀{{ remainingExcellent }}人</div>
         <div ref="wrapper" class="wrapper">
           <ul ref="content" class="content eval-tabs flex-x-start flex-nowrap ">
             <li v-for="(evaItem,t) in evaItemList" :key="evaItem.id" class="flex-col-center" @click="selectItem(evaItem, t)">
@@ -42,6 +44,7 @@
                     v-for="opt in que.option"
                     :key="'opt'+opt.id"
                     :name="opt.id"
+                    :disabled="!isClick || isExcellentDisabled(template, que, opt)"
                   >{{ opt.content }}</van-radio>
                 </van-radio-group>
                 <div v-else>
@@ -89,6 +92,17 @@ export default {
   computed: {
     id() {
       return this.$route.query.id
+    },
+    // 是否受"优秀不超过应评2/3"限制：岗位角色为教职工（postRoleCode=TEACHER）且有上限
+    isTeacherLimited() {
+      const userInfo = this.$store.getters.userInfo || {}
+      return userInfo.postRoleCode === 'TEACHER' && this.homeInfo.excellent_limit != null
+    },
+    // 剩余可评"优秀"人数 = 上限 - 已评优秀数
+    remainingExcellent() {
+      const limit = this.homeInfo.excellent_limit
+      if (limit == null) return 0
+      return Math.max(limit - (this.homeInfo.excellent_count || 0), 0)
     },
     submitBtnName() {
       const activedEvaItemIndex = this.evaItemList.findIndex(item => item.actived)
@@ -190,6 +204,14 @@ export default {
         })
       })
     },
+    // 优秀名额用尽时，仅主考核测评表（schemeName 对应的表）的"总体评价"题不允许选择"优秀"；
+    // 述责述廉评议表（partyQuestions）作答只做留痕，不受名额限制
+    isExcellentDisabled(template, que, opt) {
+      if (!this.isTeacherLimited || this.remainingExcellent > 0) return false
+      if (template.is_party) return false
+      return String(que.content || '').indexOf('总体评价') > -1 &&
+        String(opt.content || '').indexOf('优秀') === 0
+    },
     // 获取当前任务信息，写入 homeInfo 供页面头部展示
     getTaskInfo() {
       return this.$api.common['getVoteTasks']().then(async tasks => {
@@ -206,6 +228,7 @@ export default {
           total_count: progress.totalCount || 0,
           submit_count: progress.finishedCount || 0,
           excellent_count: progress.excellentCount || 0, // 已考评优秀人数
+          excellent_limit: progress.excellentLimit != null ? progress.excellentLimit : null, // 优秀上限（null=不受限）
           submittable: task.submittable !== false
         })
       })
@@ -316,6 +339,7 @@ export default {
         homeInfo.total_count = progress.totalCount
         homeInfo.submit_count = progress.finishedCount
         homeInfo.excellent_count = progress.excellentCount || 0
+        homeInfo.excellent_limit = progress.excellentLimit != null ? progress.excellentLimit : null
         this.$store.commit('user/SET_HOMEINFO', homeInfo)
       }
       // 静默刷新对象列表状态
@@ -419,6 +443,11 @@ export default {
                     color: #EE0A24;
                     font-weight: bold;
                 }
+            }
+            .excellent-rule {
+                margin: 4px 0 0 20px;
+                font-size: 12px;
+                color: #EE0A24;
             }
 
             .eval-tabs{

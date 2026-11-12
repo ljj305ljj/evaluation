@@ -56,7 +56,9 @@ const actions = {
             userId: res.userId,
             username: res.username,
             nickName: res.nickName,
-            deptName: res.deptName
+            deptName: res.deptName,
+            postRoleCode: res.postRoleCode, // 岗位角色编码（TEACHER 受"优秀不超过2/3"限制）
+            postRoleName: res.postRoleName
           })
           resolve(res)
         } else {
