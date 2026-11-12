@@ -4,7 +4,7 @@
     <div class="evaluation-box flex-col flex-x-center">
       <div ref="evalTop" class="eval-top">
         <div class="title">{{ homeInfo.name }}</div>
-        <div class="people">应考评<span class="num1">{{ homeInfo.total_count }}</span>人，已考评<span class="num2">{{ homeInfo.submit_count }}</span>人</div>
+        <div class="people">应考评<span class="num1">{{ homeInfo.total_count }}</span>人，已考评<span class="num2">{{ homeInfo.submit_count }}</span>人，已考评优秀<span class="num3">{{ homeInfo.excellent_count }}</span>人</div>
         <div ref="wrapper" class="wrapper">
           <ul ref="content" class="content eval-tabs flex-x-start flex-nowrap ">
             <li v-for="(evaItem,t) in evaItemList" :key="evaItem.id" class="flex-col-center" @click="selectItem(evaItem, t)">
@@ -205,6 +205,7 @@ export default {
           name: task.taskName || '',
           total_count: progress.totalCount || 0,
           submit_count: progress.finishedCount || 0,
+          excellent_count: progress.excellentCount || 0, // 已考评优秀人数
           submittable: task.submittable !== false
         })
       })
@@ -314,6 +315,7 @@ export default {
         const homeInfo = { ...this.homeInfo }
         homeInfo.total_count = progress.totalCount
         homeInfo.submit_count = progress.finishedCount
+        homeInfo.excellent_count = progress.excellentCount || 0
         this.$store.commit('user/SET_HOMEINFO', homeInfo)
       }
       // 静默刷新对象列表状态
@@ -410,6 +412,11 @@ export default {
                 .num2 {
                     font-size: 16px;
                     color: #14C25D;
+                    font-weight: bold;
+                }
+                .num3 {
+                    font-size: 16px;
+                    color: #EE0A24;
                     font-weight: bold;
                 }
             }
