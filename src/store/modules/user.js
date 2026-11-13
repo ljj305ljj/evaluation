@@ -48,28 +48,31 @@ const actions = {
         forbidClick: true,
         duration: 0
       })
-      api.common.getToken(buildTokenPayload(loginForm)).then(res => {
-        Toast.clear()
-        if (res && res.token) {
-          commit('SET_TOKEN', res.token)
-          commit('SET_USERINFO', {
-            userId: res.userId,
-            username: res.username,
-            nickName: res.nickName,
-            deptName: res.deptName,
-            postRoleCode: res.postRoleCode, // 岗位角色编码（优秀不超过2/3的校验已不区分角色，所有人适用）
-            postRoleName: res.postRoleName,
-            deptAdmin: res.deptAdmin === true // 是否部门管理员（v1.5：true 时可查看本部门参评进度）
-          })
-          resolve(res)
-        } else {
-          Toast('登录失败，请稍后重试')
-          reject(new Error('登录响应缺少 token'))
-        }
-      }).catch(error => {
-        Toast.clear()
-        reject(error)
-      })
+      api.common
+        .getToken(buildTokenPayload(loginForm))
+        .then((res) => {
+          Toast.clear()
+          if (res && res.token) {
+            commit('SET_TOKEN', res.token)
+            commit('SET_USERINFO', {
+              userId: res.userId,
+              username: res.username,
+              nickName: res.nickName,
+              deptName: res.deptName,
+              postRoleCode: res.postRoleCode, // 岗位角色编码（优秀不超过2/3的校验已不区分角色，所有人适用）
+              postRoleName: res.postRoleName,
+              deptAdmin: res.deptAdmin === true // 是否部门管理员（v1.5：true 时可查看本部门参评进度）
+            })
+            resolve(res)
+          } else {
+            Toast('登录失败，请稍后重试')
+            reject(new Error('登录响应缺少 token'))
+          }
+        })
+        .catch((error) => {
+          Toast.clear()
+          reject(error)
+        })
     })
   },
   // callApi=false：令牌已失效等场景，仅清本地状态，不再调用注销接口

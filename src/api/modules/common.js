@@ -13,11 +13,12 @@ const common = {
       data
     })
   },
-  // 注销令牌
+  // 注销令牌（silent：令牌已过期时该接口返回 401 属预期，拦截器静默处理，不弹"登录状态已过期"）
   deleteToken: () => {
     return request({
       url: '/open/auth/token',
-      method: 'delete'
+      method: 'delete',
+      silent: true
     })
   },
   // 我的测评任务列表

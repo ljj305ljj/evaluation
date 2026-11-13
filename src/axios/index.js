@@ -61,14 +61,18 @@ request.interceptors.response.use(
     clearTimeout(config.timer)
     config.timer = null
     config.loadingToast && config.loadingToast.clear()
+    // silent 请求（如退出登录时注销令牌）：失败属预期，不弹提示、不触发自动登出
+    const silent = config && config.silent
     let msg = 'Error'
     switch (code) {
       case 'ERR_BAD_REQUEST':
       case 'ERR_BAD_RESPONSE': {
         const { status, data } = response
         if (status === RESPONSE_CODE.TOKEN_FAIL) {
-          // 令牌失效，清登录态回登录页（不再调用注销接口）
-          store.dispatch('user/logout', { callApi: false })
+          // 令牌失效，清登录态回登录页（不再调用注销接口）；主动退出的注销请求除外（已退出，避免提示+重复登出）
+          if (!silent) {
+            store.dispatch('user/logout', { callApi: false })
+          }
           msg = (data && data.message) || '请重新登录'
         } else if (status === RESPONSE_CODE.ERROR) {
           msg = (data && data.message) || '网络请求不存在'
@@ -90,7 +94,10 @@ request.interceptors.response.use(
     }
     // 延迟到下一个宏任务再弹提示：页面 catch 中的 $toast.clear()（清"加载中"）
     // 会先于本提示执行，若同步弹出会被其一并清掉，导致错误提示"显示后秒消失"
-    setTimeout(() => Toast(msg), 0)
+    // silent 请求不弹提示（如退出登录时注销令牌返回 401 属预期）
+    if (!silent) {
+      setTimeout(() => Toast(msg), 0)
+    }
     // 业务错误时把 { status, code, message } 抛给页面处理（如 ALREADY_SUBMITTED）
     return Promise.reject(response ? response.data : error)
   }
