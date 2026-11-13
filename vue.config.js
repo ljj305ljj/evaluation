@@ -4,6 +4,7 @@ const CompressionWebpackPlugin = require('compression-webpack-plugin') // 开启
 const productionGzipExtensions = /\.(js|css|json|txt|html|ico|svg)(\?.*)?$/i // 开启gzip压缩
 const isProduction = ['production'].includes(process.env.NODE_ENV)
 const TerserPlugin = require('terser-webpack-plugin')
+const version = new Date().getTime()
 module.exports = {
   publicPath: './', // 基本路径
   indexPath: 'index.html', // 相对于打包路径index.html的路径
@@ -15,45 +16,51 @@ module.exports = {
   productionSourceMap: false, // 生产环境关闭 source map
   // parallel: require('os').cpus().length > 1, // 是否为 Babel 或 TypeScript 使用 thread-loader。该选项在系统的 CPU 有多于一个内核时自动启用，仅作用于生产构建。
   pwa: {},
-  configureWebpack: (config) => {
-    const plugins = []
-    if (isProduction) {
-      // 开启gzip压缩
-      plugins.push(
-        new CompressionWebpackPlugin({
-          algorithm: 'gzip', // 采用的压缩算法
-          test: productionGzipExtensions, // 哪些文件需要压缩
-          threshold: 10240, // 设置文件多大开始压缩
-          minRatio: 0.8 // 至少压缩的比例
-        })
-      )
-      plugins.push(
-        new TerserPlugin({
-          terserOptions: {
-            compress: {
-              warnings: false,
-              drop_console: true,
-              drop_debugger: false,
-              pure_funcs: ['console.log'] // 移除console
+  configureWebpack: {
+    plugins: isProduction
+      ? [
+          new CompressionWebpackPlugin({
+            algorithm: 'gzip', // 采用的压缩算法
+            test: productionGzipExtensions, // 哪些文件需要压缩
+            threshold: 10240, // 设置文件多大开始压缩
+            minRatio: 0.8, // 至少压缩的比例
+            deleteOriginalAssets: false // 是否删除源文件，默认: false
+          }),
+          new TerserPlugin({
+            terserOptions: {
+              compress: {
+                warnings: false,
+                drop_console: true,
+                drop_debugger: true,
+                pure_funcs: ['console.log'] // 移除console
+              }
             }
-          }
-        })
-      )
+          })
+        ]
+      : [],
+    output: {
+      // 输出重构  打包编译后的 文件名称  【模块名称.版本号.时间戳】
+      filename: `static/js/[name].${version}.js`,
+      chunkFilename: `static/js/[name].${version}.js`
     }
-    config.plugins = [...config.plugins, ...plugins]
   },
   chainWebpack: (config) => {
     // 修复热更新失效
     config.resolve.symlinks(true)
     // 修改文件引入自定义路径
     config.resolve.alias.set('@', resolve('src'))
+    // 全局修改标题 防止首页进入出现英文
     config.plugin('html').tap((args) => {
       args[0].title = '福建理工大学中层干部学年度考评系统'
       return args
     })
   },
   css: {
-    extract: isProduction,
+    extract: {
+      // 修改打包后css文件名   // css打包文件，添加时间戳
+      filename: `static/css/[name].${version}.css`,
+      chunkFilename: `static/css/[name].${version}.css`
+    },
     requireModuleExtension: true,
     sourceMap: false,
     loaderOptions: {
