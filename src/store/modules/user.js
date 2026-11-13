@@ -57,7 +57,7 @@ const actions = {
             username: res.username,
             nickName: res.nickName,
             deptName: res.deptName,
-            postRoleCode: res.postRoleCode, // 岗位角色编码（TEACHER 受"优秀不超过2/3"限制）
+            postRoleCode: res.postRoleCode, // 岗位角色编码（TEACHER/ORG_PARTY_SECTION/ORG_DEPT_SECTION 受"优秀不超过2/3"限制）
             postRoleName: res.postRoleName,
             deptAdmin: res.deptAdmin === true // 是否部门管理员（v1.5：true 时可查看本部门参评进度）
           })

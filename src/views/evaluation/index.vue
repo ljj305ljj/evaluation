@@ -5,8 +5,8 @@
       <div ref="evalTop" class="eval-top">
         <div class="title">{{ homeInfo.name }}</div>
         <div class="people">应考评<span class="num1">{{ homeInfo.total_count }}</span>人，已考评<span class="num2">{{ homeInfo.submit_count }}</span>人，已考评优秀<span class="num3">{{ homeInfo.excellent_count }}</span>人</div>
-        <!-- 测评规则提醒：仅"优秀"名额受限的角色（教职工）展示 -->
-        <div v-if="isTeacherLimited" class="excellent-rule">“优秀”等次人数不得超过总测试人数2/3，当前剩余可评优秀{{ remainingExcellent }}人</div>
+        <!-- 测评规则提醒：仅"优秀"名额受限的角色展示 -->
+        <div v-if="isExcellentLimited" class="excellent-rule">“优秀”等次人数不得超过总测评人数2/3，当前剩余可评优秀<strong>{{ remainingExcellent }}</strong>人</div>
         <div ref="wrapper" class="wrapper">
           <ul ref="content" class="content eval-tabs flex-x-start flex-nowrap ">
             <li v-for="(evaItem,t) in evaItemList" :key="evaItem.id" class="flex-col-center" @click="selectItem(evaItem, t)">
@@ -93,14 +93,22 @@ export default {
     id() {
       return this.$route.query.id
     },
-    // 是否受"优秀不超过应评2/3"限制：岗位角色为教职工（postRoleCode=TEACHER）且有上限
-    isTeacherLimited() {
+    // 是否受"优秀不超过应评2/3"限制：受限岗位角色（教职工 / 机关党群部门科级 / 机关行政部门科级）
+    isExcellentLimited() {
+      const EXCELLENT_LIMIT_ROLES = ['TEACHER', 'ORG_PARTY_SECTION', 'ORG_DEPT_SECTION']
       const userInfo = this.$store.getters.userInfo || {}
-      return userInfo.postRoleCode === 'TEACHER' && this.homeInfo.excellent_limit != null
+      return EXCELLENT_LIMIT_ROLES.indexOf(userInfo.postRoleCode) > -1
+    },
+    // 优秀上限：服务端已下发 excellentLimit 时用服务端值（null=不受限）；
+    // 受限角色且服务端未下发（返回 null）时，前端按 总测评人数×2/3 向下取整计算
+    excellentLimit() {
+      if (this.homeInfo.excellent_limit != null) return this.homeInfo.excellent_limit
+      if (!this.isExcellentLimited) return null
+      return Math.floor((this.homeInfo.total_count || 0) * 2 / 3)
     },
     // 剩余可评"优秀"人数 = 上限 - 已评优秀数
     remainingExcellent() {
-      const limit = this.homeInfo.excellent_limit
+      const limit = this.excellentLimit
       if (limit == null) return 0
       return Math.max(limit - (this.homeInfo.excellent_count || 0), 0)
     },
@@ -207,7 +215,7 @@ export default {
     // 优秀名额用尽时，仅主考核测评表（schemeName 对应的表）的"总体评价"题不允许选择"优秀"；
     // 述责述廉评议表（partyQuestions）作答只做留痕，不受名额限制
     isExcellentDisabled(template, que, opt) {
-      if (!this.isTeacherLimited || this.remainingExcellent > 0) return false
+      if (!this.isExcellentLimited || this.remainingExcellent > 0) return false
       if (template.is_party) return false
       return String(que.content || '').indexOf('总体评价') > -1 &&
         String(opt.content || '').indexOf('优秀') === 0

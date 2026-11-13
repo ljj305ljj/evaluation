@@ -291,7 +291,7 @@ export default {
     padding: 20px;
     border: 1px solid #e6e4e2;
     border-radius: 10px;
-    max-height: 420px;
+    // min-height: 420px;
     overflow-y: auto;
     .unfinish-title {
       font-size: 15px;
