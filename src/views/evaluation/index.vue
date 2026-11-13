@@ -5,7 +5,7 @@
       <div ref="evalTop" class="eval-top">
         <div class="title">{{ homeInfo.name }}</div>
         <div class="people">应考评<span class="num1">{{ homeInfo.total_count }}</span>人，已考评<span class="num2">{{ homeInfo.submit_count }}</span>人，已考评优秀<span class="num3">{{ homeInfo.excellent_count }}</span>人</div>
-        <!-- 测评规则提醒：仅"优秀"名额受限的角色展示 -->
+        <!-- 测评规则提醒：所有人统一展示 -->
         <div v-if="isExcellentLimited" class="excellent-rule">“优秀”等次人数不得超过总测评人数2/3，当前剩余可评优秀<strong>{{ remainingExcellent }}</strong>人</div>
         <div ref="wrapper" class="wrapper">
           <ul ref="content" class="content eval-tabs flex-x-start flex-nowrap ">
@@ -93,18 +93,17 @@ export default {
     id() {
       return this.$route.query.id
     },
-    // 是否受"优秀不超过应评2/3"限制：受限岗位角色（教职工 / 机关党群部门科级 / 机关行政部门科级）
+    // 是否展示"优秀不超过应评2/3"规则提醒：不看岗位角色，所有人都有该限制；总测评人数≤1 时不限制、不展示
     isExcellentLimited() {
-      const EXCELLENT_LIMIT_ROLES = ['TEACHER', 'ORG_PARTY_SECTION', 'ORG_DEPT_SECTION']
-      const userInfo = this.$store.getters.userInfo || {}
-      return EXCELLENT_LIMIT_ROLES.indexOf(userInfo.postRoleCode) > -1
+      return (this.homeInfo.total_count || 0) > 1
     },
-    // 优秀上限：服务端已下发 excellentLimit 时用服务端值（null=不受限）；
-    // 受限角色且服务端未下发（返回 null）时，前端按 总测评人数×2/3 向下取整计算
+    // 优秀上限：服务端已下发 excellentLimit 时用服务端值；
+    // 未下发（返回 null）时，前端按 总测评人数×2/3 向下取整计算（不区分岗位角色）；
+    // 总测评人数只有 1 人时不限制（返回 null，剩余名额恒为充足）
     excellentLimit() {
+      if ((this.homeInfo.total_count || 0) <= 1) return null
       if (this.homeInfo.excellent_limit != null) return this.homeInfo.excellent_limit
-      if (!this.isExcellentLimited) return null
-      return Math.floor((this.homeInfo.total_count || 0) * 2 / 3)
+      return Math.floor(this.homeInfo.total_count * 2 / 3)
     },
     // 剩余可评"优秀"人数 = 上限 - 已评优秀数
     remainingExcellent() {
