@@ -1,8 +1,19 @@
 <template>
   <div class="home flex-col">
     <Header />
-    <!-- 考评入口 -->
-    <div v-for="task in taskList" :key="task.taskId" class="entrance flex-y-center flex-x-between">
+    <!-- 首屏骨架屏：任务数据未加载完成时模拟"入口卡片 + 须知卡片"布局 -->
+    <div v-if="pageLoading" class="home-skeleton">
+      <div class="skeleton-card skeleton-entrance flex-y-center flex-x-between">
+        <van-skeleton title :row="1" title-width="70%" row-width="50%" animated class="skeleton-main" />
+        <div class="skeleton-btn" />
+      </div>
+      <div class="skeleton-card">
+        <van-skeleton title :row="4" title-width="30%" animated />
+      </div>
+    </div>
+    <template v-else>
+      <!-- 考评入口 -->
+      <div v-for="task in taskList" :key="task.taskId" class="entrance flex-y-center flex-x-between">
       <div class="" style="flex: 1">
         <div class="subject">{{ task.taskName }}</div>
         <div class="subhead">
@@ -48,6 +59,7 @@
     <div v-if="!taskList.length" class="home-box notice">
       <p class="notice-content">暂无测评任务</p>
     </div>
+    </template>
   </div>
 </template>
 
@@ -68,7 +80,8 @@ export default {
   },
   data() {
     return {
-      taskList: [] // 我的测评任务（含个人进度）
+      taskList: [], // 我的测评任务（含个人进度）
+      pageLoading: true // 首屏数据是否加载中（true 时展示骨架屏）
     }
   },
   computed: {
@@ -105,16 +118,10 @@ export default {
   async created() {
     try {
       this.getToken()
-      this.$toast.loading({
-        message: '加载中...',
-        forbidClick: true,
-        // closeOnClick: true,
-        duration: 0
-      })
       await this.getTaskList()
-      this.$toast.clear()
-    } catch (e) {
-      this.$toast.clear()
+    } finally {
+      // 无论成功失败都关闭骨架屏：失败时保持原有"暂无测评任务"兜底展示
+      this.pageLoading = false
     }
   },
   // keepAlive 页面从考评页返回时刷新进度
@@ -216,6 +223,31 @@ export default {
   overflow-y: auto;
   .home-box {
     margin: 20px;
+  }
+  // 首屏骨架屏容器：卡片样式对齐真实内容卡片
+  .home-skeleton {
+    .skeleton-card {
+      margin: 20px 20px 0 20px;
+      padding: 20px 15px;
+      border: 1px solid #e6e4e2;
+      border-radius: 10px;
+      &.skeleton-entrance {
+        height: 100px;
+        box-sizing: border-box;
+        .skeleton-main {
+          flex: 1;
+        }
+        .skeleton-btn {
+          width: 90px;
+          height: 40px;
+          margin-left: 15px;
+          border-radius: 5px;
+          background: linear-gradient(90deg, #f2f3f5 25%, #ebedf0 37%, #f2f3f5 50%);
+          background-size: 400% 100%;
+          animation: skeleton-blink 1.2s ease infinite;
+        }
+      }
+    }
   }
   header {
     position: sticky;
@@ -329,6 +361,15 @@ export default {
         }
       }
     }
+  }
+}
+// 自定义占位块（开始考评按钮位置）的流动动画
+@keyframes skeleton-blink {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
   }
 }
 </style>
